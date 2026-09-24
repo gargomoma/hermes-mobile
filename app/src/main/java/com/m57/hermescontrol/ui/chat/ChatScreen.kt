@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -367,6 +368,7 @@ fun ChatScreen(
     }
     var lastAnimatedMessageId by rememberSaveable { mutableStateOf<String?>(null) }
     var showReloginDialog by rememberSaveable { mutableStateOf(false) }
+    var showResyncDialog by remember { mutableStateOf(false) }
     var showSubagentInspectionSheet by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(showSubagentInspectionSheet) {
         if (showSubagentInspectionSheet) {
@@ -577,6 +579,22 @@ fun ChatScreen(
                             viewModel.openTimeline()
                         },
                         modifier = Modifier.testTag("chat_menu_timeline"),
+                    )
+
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.chat_action_resync)) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Filled.Refresh,
+                                contentDescription = null,
+                            )
+                        },
+                        enabled = state.currentSessionId != null && !state.isAgentTyping,
+                        onClick = {
+                            showSessionMenu = false
+                            showResyncDialog = true
+                        },
+                        modifier = Modifier.testTag("chat_menu_resync"),
                     )
 
                     // Chat search lives in this overflow menu (moved from the top bar)
@@ -935,6 +953,27 @@ fun ChatScreen(
                 onDismiss = { showReloginDialog = false },
                 onRelogin = { username, password, onResult ->
                     viewModel.relogin(username, password, onResult)
+                },
+            )
+        }
+
+        if (showResyncDialog) {
+            AlertDialog(
+                onDismissRequest = { showResyncDialog = false },
+                title = { Text(stringResource(R.string.chat_resync_title)) },
+                text = { Text(stringResource(R.string.chat_resync_message)) },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showResyncDialog = false
+                        viewModel.forceResyncTranscript()
+                    }) {
+                        Text(stringResource(R.string.chat_resync_confirm))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showResyncDialog = false }) {
+                        Text(stringResource(R.string.common_cancel))
+                    }
                 },
             )
         }

@@ -2940,6 +2940,47 @@ class ChatViewModel(
         loadSessionMessages(sessionId, sessionGeneration)
     }
 
+    /**
+     * Force-rebuild the current session transcript from server truth.
+     *
+     * Discards the local cache (including any gateway-drift ghost rows) before
+     * hydrating from REST. Destructive by design: rows that exist only locally
+     * — system notices, `/slash` commands, clarify replies and local command
+     * output — are not on the server and do not come back. The caller must
+     * confirm and keep this disabled while the agent is streaming.
+     */
+    fun forceResyncTranscript() {
+        val sessionId = _uiState.value.currentSessionId ?: return
+        if (!sessionHasServerPresence) return
+        val generation = sessionGeneration
+        viewModelScope.launch {
+            withContext(ioDispatcher) { repo.clearMessagesForSession(sessionId) }
+            cacheJob?.cancel()
+            hydrationJob?.cancel()
+            olderJob?.cancel()
+            syncJob?.cancel()
+            cacheCursor = null
+            cacheHasOlder = false
+            cacheLoaded = false
+            serverHasOlder = false
+            loadedMessageOffset = 0
+            latestPaging = false
+            isSyncingMessages = false
+            streamingController.resetStreaming()
+            _streamingState.value = StreamingState()
+            _uiState.update {
+                it.copy(
+                    messages = emptyList(),
+                    isLoading = true,
+                    isLoadingOlder = false,
+                    hasOlderMessages = false,
+                    streamingMessage = null,
+                )
+            }
+            loadSessionMessages(sessionId, generation)
+        }
+    }
+
     fun refreshSettings() {
         _uiState.update { state ->
             state.copy(

@@ -8,6 +8,7 @@ import android.util.Log
 import androidx.core.content.FileProvider
 import com.m57.hermescontrol.data.local.AuthManager
 import com.m57.hermescontrol.data.local.HermesDatabase
+import com.m57.hermescontrol.data.local.toEntity
 import com.m57.hermescontrol.data.model.Attachment
 import com.m57.hermescontrol.data.model.AttachmentSource
 import com.m57.hermescontrol.data.model.PaginationInfo
@@ -1344,6 +1345,34 @@ class ChatViewModelTest {
             viewModel.consumePendingPrefill()
             advanceUntilIdle()
             assertNull(viewModel.uiState.value.pendingPrefillText)
+        }
+
+    @Test
+    fun forceResyncTranscript_wipesLocalCacheAndReloadsFromServer() =
+        runTest {
+            val (viewModel, sessionId) = createViewModelWithSession()
+
+            // MessageStart marks the server row as existing (presence flag).
+            mockEventsFlow.emit(WsEvent.MessageStart(sessionId))
+            advanceUntilIdle()
+
+            // Seed the local cache with a row that only exists on this device.
+            fakeRepo.dao.addMessageDirect(
+                ChatMessage(
+                    id = "uuid-ghost",
+                    role = MessageRole.ASSISTANT,
+                    content = "ghost",
+                ).toEntity(sessionId),
+            )
+            assertEquals(setOf("uuid-ghost"), fakeRepo.dao.idsForSession(sessionId))
+
+            viewModel.forceResyncTranscript()
+            advanceUntilIdle()
+
+            assertTrue(
+                "force resync must discard the local cache",
+                fakeRepo.dao.idsForSession(sessionId).isEmpty(),
+            )
         }
 
     // ── Connection / init tests ──────────────────────────────────────────────

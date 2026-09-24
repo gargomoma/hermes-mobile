@@ -169,6 +169,10 @@
     <string name="chat_timeline_load_more">Load more</string>
     <string name="chat_timeline_retry">Retry</string>
     <string name="chat_timeline_refresh">Refresh</string>
+    <string name="chat_action_resync">Force resync transcript</string>
+    <string name="chat_resync_title">Force resync transcript?</string>
+    <string name="chat_resync_message">This discards the local chat cache and rebuilds the transcript from the server. Items that exist only locally — system notices, slash commands, clarification replies and local command output — cannot be recovered.</string>
+    <string name="chat_resync_confirm">Resync</string>
     <string name="chat_history_window_title">Viewing earlier messages</string>
     <string name="chat_history_window_latest">Back to latest</string>
     <string name="chat_history_window_more_older">Earlier messages exist before this window.</string>
