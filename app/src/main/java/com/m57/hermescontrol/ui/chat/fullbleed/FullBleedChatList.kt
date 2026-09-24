@@ -102,6 +102,7 @@ fun FullBleedChatList(
     openingAttachmentPath: String? = null,
     onImageClick: (ImageViewerModel) -> Unit = {},
     hasOlderMessages: Boolean = false,
+    unconfirmedUserMessageIds: Set<String> = emptySet(),
     pagingSessionId: String? = null,
     onLoadOlder: () -> Unit = viewModel::loadOlderMessages,
     replyErrorContent: (@Composable () -> Unit)? = null,
@@ -304,6 +305,7 @@ fun FullBleedChatList(
                                             isCurrentMatch =
                                                 searchState.currentMatchId != null &&
                                                     searchState.currentMatchId == userMessage.id,
+                                            isUnconfirmed = userMessage.id in unconfirmedUserMessageIds,
                                             onOpenAttachment = viewModel::openAttachment,
                                             onSaveAttachment = onSaveAttachment,
                                             savingAttachmentPath = savingAttachmentPath,
@@ -452,6 +454,7 @@ private fun renderChatBubble(
     message: ChatMessage,
     searchQuery: String,
     isCurrentMatch: Boolean,
+    isUnconfirmed: Boolean,
     onOpenAttachment: (com.m57.hermescontrol.data.model.Attachment) -> Unit,
     onSaveAttachment: (com.m57.hermescontrol.data.model.Attachment) -> Unit,
     savingAttachmentPath: String?,
@@ -464,6 +467,7 @@ private fun renderChatBubble(
         message = message,
         searchQuery = searchQuery,
         isCurrentMatch = isCurrentMatch,
+        isUnconfirmed = isUnconfirmed,
         onOpenAttachment = onOpenAttachment,
         onSaveAttachment = onSaveAttachment,
         savingAttachmentPath = savingAttachmentPath,

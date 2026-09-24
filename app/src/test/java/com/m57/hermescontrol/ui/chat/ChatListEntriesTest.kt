@@ -172,4 +172,28 @@ class ChatListEntriesTest {
         assertEquals("5", toolCallDividerLabel(count = 5, maxPerTurn = 0))
         assertEquals("5", toolCallDividerLabel(count = 5, maxPerTurn = -1))
     }
+
+    @Test
+    fun unconfirmedUserMessageIdsFlagsOnlyUnconfirmedGenuineTurns() {
+        val unconfirmed = ChatMessage(id = "uuid-1", role = MessageRole.USER, content = "did this arrive?")
+        val confirmed = ChatMessage(id = "rest-session-7", role = MessageRole.USER, content = "delivered")
+        val alias =
+            ChatMessage(id = "uuid-2", role = MessageRole.USER, content = "delivered", restId = "rest-session-8")
+        val slash = ChatMessage(id = "uuid-3", role = MessageRole.USER, content = "/stop")
+        val clarify =
+            ChatMessage(
+                id = "uuid-4",
+                role = MessageRole.USER,
+                content = "production",
+                displayKind = "clarify_response",
+            )
+        val steer = ChatMessage(id = "uuid-5", role = MessageRole.USER, content = "use Python", displayKind = "steer")
+        val assistant = ChatMessage(id = "uuid-6", role = MessageRole.ASSISTANT, content = "answer")
+
+        val ids =
+            listOf(unconfirmed, confirmed, alias, slash, clarify, steer, assistant)
+                .unconfirmedUserMessageIds()
+
+        assertEquals(setOf("uuid-1", "uuid-5"), ids)
+    }
 }

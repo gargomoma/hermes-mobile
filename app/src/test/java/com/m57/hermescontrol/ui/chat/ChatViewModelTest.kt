@@ -1357,6 +1357,8 @@ class ChatViewModelTest {
             advanceUntilIdle()
 
             // Seed the local cache with a row that only exists on this device.
+            // Note: session setup legitimately persists the "Session created"
+            // marker, so assert presence of the ghost rather than exact set.
             fakeRepo.dao.addMessageDirect(
                 ChatMessage(
                     id = "uuid-ghost",
@@ -1364,7 +1366,10 @@ class ChatViewModelTest {
                     content = "ghost",
                 ).toEntity(sessionId),
             )
-            assertEquals(setOf("uuid-ghost"), fakeRepo.dao.idsForSession(sessionId))
+            assertTrue(
+                "ghost row must be seeded",
+                fakeRepo.dao.idsForSession(sessionId).contains("uuid-ghost"),
+            )
 
             viewModel.forceResyncTranscript()
             advanceUntilIdle()
@@ -1374,6 +1379,52 @@ class ChatViewModelTest {
                 fakeRepo.dao.idsForSession(sessionId).isEmpty(),
             )
         }
+
+    @Test
+    fun reconcileUnconfirmedUserMessagesTracksLostUserTurns() =
+        runTest {
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            setUiMessages(
+                viewModel,
+                listOf(
+                    ChatMessage(id = "uuid-lost", role = MessageRole.USER, content = "did this arrive?"),
+                    ChatMessage(id = "uuid-slash", role = MessageRole.USER, content = "/stop"),
+                    ChatMessage(id = "rest-session-9", role = MessageRole.USER, content = "delivered"),
+                ),
+            )
+            viewModel.reconcileUnconfirmedUserMessages()
+            // uiState is combine(_uiState, connectionStatus).stateIn(...):
+            // flush the scheduler so the public flow re-emits before asserting.
+            advanceUntilIdle()
+            assertEquals(
+                setOf("uuid-lost"),
+                viewModel.uiState.value.unconfirmedUserMessageIds,
+            )
+
+            setUiMessages(
+                viewModel,
+                listOf(ChatMessage(id = "rest-session-9", role = MessageRole.USER, content = "did this arrive?")),
+            )
+            viewModel.reconcileUnconfirmedUserMessages()
+            advanceUntilIdle()
+            val remaining = viewModel.uiState.value.unconfirmedUserMessageIds
+            assertTrue(remaining.isEmpty())
+        }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun setUiMessages(
+        viewModel: ChatViewModel,
+        messages: List<ChatMessage>,
+    ) {
+        val state =
+            ChatViewModel::class.java
+                .getDeclaredField("_uiState")
+                .apply { isAccessible = true }
+                .get(viewModel) as MutableStateFlow<ChatUiState>
+        state.value = viewModel.uiState.value.copy(messages = messages, isAgentTyping = false)
+    }
 
     // ── Connection / init tests ──────────────────────────────────────────────
 

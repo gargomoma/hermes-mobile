@@ -40,6 +40,18 @@ internal fun ChatMessage.isUserTurnBoundary(): Boolean =
         !content.startsWith(MAX_ITERATIONS_SYSTEM_MARKER)
 
 /**
+ * Genuine user turns the server never confirmed — they carry no canonical REST
+ * identity and are not device-only rows (`/slash` commands, clarify replies),
+ * so they never reached the transcript and will never get an answer.
+ *
+ * Derived from server-truth syncs only (see `ChatViewModel.reconcileUnconfirmedUserMessages`);
+ * an in-flight send is not included while its turn is streaming.
+ */
+internal fun List<ChatMessage>.unconfirmedUserMessageIds(): Set<String> =
+    filter { it.role == MessageRole.USER && !it.isPermanentlyLocal() && it.canonicalRestId == null }
+        .mapTo(mutableSetOf()) { it.id }
+
+/**
  * Returns the message IDs that complete a tool-call milestone — a [MessageRole.TOOL]
  * message whose per-turn tool-call count is a multiple of [TOOL_CALL_DIVIDER_INTERVAL] —
  * mapped to the per-turn count at that point.

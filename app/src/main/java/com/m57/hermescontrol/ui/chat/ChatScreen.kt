@@ -1,4 +1,4 @@
-package com.m57.hermescontrol.ui.chat
+﻿package com.m57.hermescontrol.ui.chat
 
 import android.app.Activity
 import android.content.ActivityNotFoundException
@@ -840,6 +840,7 @@ fun ChatScreen(
                                 )
                             }
                         },
+                    unconfirmedUserMessageIds = state.unconfirmedUserMessageIds,
                 )
 
                 // Loading overlay

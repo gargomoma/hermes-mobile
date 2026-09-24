@@ -9,6 +9,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -101,6 +102,7 @@ fun ChatBubble(
     message: ChatMessage,
     searchQuery: String = "",
     isCurrentMatch: Boolean = false,
+    isUnconfirmed: Boolean = false,
     onOpenAttachment: (Attachment) -> Unit = {},
     onSaveAttachment: (Attachment) -> Unit = {},
     savingAttachmentPath: String? = null,
@@ -172,19 +174,29 @@ fun ChatBubble(
                     }
                 }
             Box {
+                val bubbleShape =
+                    RoundedCornerShape(
+                        topStart = 16.dp,
+                        topEnd = 16.dp,
+                        bottomStart = 16.dp,
+                        bottomEnd = 4.dp,
+                    )
+                // Unconfirmed user turns never reached the server: keep the
+                // bubble shape but tint it and draw a subtle error border so
+                // they stand out without changing the layout.
+                val bubbleBase =
+                    Modifier
+                        .widthIn(max = maxBubbleWidth)
+                        .clip(bubbleShape)
+                        .background(color = if (isUnconfirmed) primary.copy(alpha = 0.85f) else primary)
+                val bubbleModifier =
+                    if (isUnconfirmed) {
+                        bubbleBase.border(BorderStroke(1.5.dp, statusColors.error), bubbleShape)
+                    } else {
+                        bubbleBase
+                    }
                 Surface(
-                    modifier =
-                        Modifier
-                            .widthIn(max = maxBubbleWidth)
-                            .clip(
-                                RoundedCornerShape(
-                                    topStart = 16.dp,
-                                    topEnd = 16.dp,
-                                    bottomStart = 16.dp,
-                                    bottomEnd = 4.dp,
-                                ),
-                            ).background(color = primary)
-                            .testTag("chat_bubble_user"),
+                    modifier = bubbleModifier.testTag("chat_bubble_user"),
                     color = Color.Transparent,
                     tonalElevation = 0.dp,
                 ) {

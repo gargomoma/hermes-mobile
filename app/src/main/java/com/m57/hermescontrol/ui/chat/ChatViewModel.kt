@@ -129,6 +129,12 @@ data class ChatUiState(
     val isLoadingOlder: Boolean = false,
     val hasOlderMessages: Boolean = false,
     /**
+     * IDs of genuine user turns the server never confirmed (no canonical REST
+     * identity). Derived after each server-truth sync while idle — an in-flight
+     * send is never included. Drives the "not delivered" bubble tint.
+     */
+    val unconfirmedUserMessageIds: Set<String> = emptySet(),
+    /**
      * Real per-turn tool-call budget (agent.max_turns) from GET /api/config.
      * Null when it could not be fetched — the tool-call dividers then degrade
      * to a bare count instead of a hardcoded default.
@@ -2971,6 +2977,7 @@ class ChatViewModel(
             _uiState.update {
                 it.copy(
                     messages = emptyList(),
+                    unconfirmedUserMessageIds = emptySet(),
                     isLoading = true,
                     isLoadingOlder = false,
                     hasOlderMessages = false,
@@ -2978,6 +2985,20 @@ class ChatViewModel(
                 )
             }
             loadSessionMessages(sessionId, generation)
+        }
+    }
+
+    /**
+     * Re-derive which user turns the server never confirmed, from the current
+     * (server-merged) message list. Only called after a successful server-truth
+     * hydration/sync and never while a turn is streaming, so an in-flight send
+     * is never mistaken for a lost one.
+     */
+    internal fun reconcileUnconfirmedUserMessages() {
+        if (_uiState.value.isAgentTyping || _streamingState.value.streamingMessage != null) return
+        val ids = _uiState.value.messages.unconfirmedUserMessageIds()
+        _uiState.update {
+            if (it.unconfirmedUserMessageIds == ids) it else it.copy(unconfirmedUserMessageIds = ids)
         }
     }
 
@@ -3503,6 +3524,7 @@ class ChatViewModel(
                                     )
                                 } ?: return@launch
                             persistHistoryPage(page, sessionId)
+                            reconcileUnconfirmedUserMessages()
                             if (!valid()) return@launch
                             latestPaging = useLatest
                             // Cursor counts RAW rows, including hidden reasoning/placeholder rows.
@@ -3623,6 +3645,7 @@ class ChatViewModel(
         _uiState.update {
             it.copy(
                 messages = emptyList(),
+                unconfirmedUserMessageIds = emptySet(),
                 isSessionReady = false,
                 currentSessionId = sessionId,
                 chatTitle = title,
@@ -4027,6 +4050,7 @@ class ChatViewModel(
                                 )
                             } ?: return@launch
                         persistHistoryPage(page, sessionId)
+                        reconcileUnconfirmedUserMessages()
                         // Never derive the older cursor from displayed rows or reset it to this latest page.
                         // Append-only growth shifts from-end offsets toward newer rows: the next older
                         // request may overlap, but stable IDs remove echoes without skipping any history.
